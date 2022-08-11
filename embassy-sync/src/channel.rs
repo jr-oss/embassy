@@ -60,7 +60,7 @@ where
 
     /// Attempt to immediately send a message.
     ///
-    /// See [`Channel::send()`]
+    /// See [`Channel::try_send()`]
     pub fn try_send(&self, message: T) -> Result<(), TrySendError<T>> {
         self.channel.try_send(message)
     }
@@ -100,7 +100,7 @@ impl<'ch, T> DynamicSender<'ch, T> {
 
     /// Attempt to immediately send a message.
     ///
-    /// See [`Channel::send()`]
+    /// See [`Channel::try_send()`]
     pub fn try_send(&self, message: T) -> Result<(), TrySendError<T>> {
         self.channel.try_send_with_context(message, None)
     }

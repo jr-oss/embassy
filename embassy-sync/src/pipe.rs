@@ -41,7 +41,7 @@ where
 
     /// Attempt to immediately write a message.
     ///
-    /// See [`Pipe::write()`]
+    /// See [`Pipe::try_write()`]
     pub fn try_write(&self, buf: &[u8]) -> Result<usize, TryWriteError> {
         self.pipe.try_write(buf)
     }
@@ -103,7 +103,7 @@ where
 
     /// Attempt to immediately read a message.
     ///
-    /// See [`Pipe::read()`]
+    /// See [`Pipe::try_read()`]
     pub fn try_read(&self, buf: &mut [u8]) -> Result<usize, TryReadError> {
         self.pipe.try_read(buf)
     }
