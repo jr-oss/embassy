@@ -32,6 +32,12 @@ pub(crate) mod sealed {
 
     pub trait GeneralPurpose16bitInstance: Basic16bitInstance {
         fn regs_gp16() -> crate::pac::timer::TimGp16;
+        fn set_center_aligned_mode(&mut self, cms: crate::timer::vals::Cms) {
+            unsafe {
+                Self::regs_gp16().cr1().modify(|w| w.set_cms(cms));
+            }
+        }
+
     }
 
     pub trait GeneralPurpose32bitInstance: GeneralPurpose16bitInstance {

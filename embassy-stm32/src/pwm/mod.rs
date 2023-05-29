@@ -54,6 +54,24 @@ impl From<OutputCompareMode> for stm32_metapac::timer::vals::Ocm {
     }
 }
 
+pub enum CenterAlignedModeSelection {
+    EdgeAligned,
+    CenterAlignedMode1,
+    CenterAlignedMode2,
+    CenterAlignedMode3,
+}
+
+impl From<CenterAlignedModeSelection> for stm32_metapac::timer::vals::Cms {
+    fn from(mode: CenterAlignedModeSelection) -> Self {
+        match mode {
+            CenterAlignedModeSelection::EdgeAligned => stm32_metapac::timer::vals::Cms::EDGEALIGNED,
+            CenterAlignedModeSelection::CenterAlignedMode1 => stm32_metapac::timer::vals::Cms::CENTERALIGNED1,
+            CenterAlignedModeSelection::CenterAlignedMode2 => stm32_metapac::timer::vals::Cms::CENTERALIGNED2,
+            CenterAlignedModeSelection::CenterAlignedMode3 => stm32_metapac::timer::vals::Cms::CENTERALIGNED3,
+        }
+    }
+}
+
 pub(crate) mod sealed {
     use super::*;
 
