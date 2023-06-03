@@ -98,8 +98,20 @@ impl<'d, T: CaptureCompare16bitInstance> SimplePwm<'d, T> {
         }
     }
 
+    pub fn tim_enable(&mut self) {
+        self.inner.start();
+    }
+
+    pub fn tim_disable(&mut self) {
+        self.inner.stop();
+    }
+
     pub fn set_freq(&mut self, freq: Hertz) {
         self.inner.set_frequency(freq);
+    }
+
+    pub fn get_freq(&self) -> Hertz {
+        self.inner.get_frequency()
     }
 
     pub fn get_max_duty(&self) -> u16 {
@@ -109,5 +121,80 @@ impl<'d, T: CaptureCompare16bitInstance> SimplePwm<'d, T> {
     pub fn set_duty(&mut self, channel: Channel, duty: u16) {
         assert!(duty < self.get_max_duty());
         unsafe { self.inner.set_compare_value(channel, duty) }
+    }
+
+    pub fn set_output_compare_mode(&mut self, channel: Channel, mode: OutputCompareMode) {
+        unsafe { self.inner.set_output_compare_mode(channel, mode); }
+    }
+
+    pub fn set_center_aligned_mode(&mut self, cms: CenterAlignedMode) {
+        unsafe { self.inner.set_center_aligned_mode(cms.into()); }
+    }
+
+    pub fn get_center_aligned_mode(&self) -> CenterAlignedMode {
+        unsafe {
+            self.inner.get_center_aligned_mode()
+        }
+    }
+}
+
+pub struct SimplePwmEx<'d, T> {
+    inner: SimplePwm<'d, T>,
+}
+
+impl<'d, T: CaptureCompare16bitInstance> SimplePwmEx<'d, T> {
+    pub fn new(simple_pwm: SimplePwm<'d, T>) -> Self {
+        Self { inner: simple_pwm }
+    }
+
+    pub fn enable(&mut self, channel: Channel) {
+        self.inner.enable(channel);
+    }
+
+    pub fn disable(&mut self, channel: Channel) {
+        self.inner.disable(channel);
+    }
+
+    pub fn set_freq(&mut self, freq: Hertz) {
+        let scale = self.get_scale();
+        self.inner.set_freq(freq * scale);
+    }
+
+    pub fn get_max_duty(&self) -> u16 {
+        self.inner.get_max_duty() / self.get_scale()
+    }
+
+    pub fn set_duty(&mut self, channel: Channel, duty: u16) {
+        self.inner.set_duty(channel, duty);
+    }
+
+    pub fn set_output_compare_mode(&mut self, channel: Channel, mode: OutputCompareMode) {
+        self.inner.set_output_compare_mode(channel, mode);
+    }
+
+    pub fn set_center_aligned_mode(&mut self, cms: CenterAlignedMode) {
+        let prev_scale = self.get_scale();
+
+        self.inner.tim_disable(); // Don't change cms with timer enabled
+        self.inner.set_center_aligned_mode(cms);
+
+        let new_scale = self.get_scale();
+
+        if new_scale != prev_scale {
+            let f = self.inner.get_freq() * new_scale / prev_scale;
+            self.inner.set_freq(f);
+        }
+
+        self.inner.tim_enable();
+    }
+
+    fn get_scale(&self) -> u16 {
+        let scale = match self.inner.get_center_aligned_mode() {
+            CenterAlignedMode::EdgeAligned => 1,
+            CenterAlignedMode::CenterAlignedMode1 => 2,
+            CenterAlignedMode::CenterAlignedMode2 => 2,
+            CenterAlignedMode::CenterAlignedMode3 => 2,
+        };
+        scale
     }
 }

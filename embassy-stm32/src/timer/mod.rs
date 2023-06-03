@@ -25,6 +25,8 @@ pub(crate) mod sealed {
 
         fn set_frequency(&mut self, frequency: Hertz);
 
+        fn get_frequency(&self) -> Hertz;
+
         fn clear_update_interrupt(&mut self) -> bool;
 
         fn enable_update_interrupt(&mut self, enable: bool);
@@ -32,12 +34,6 @@ pub(crate) mod sealed {
 
     pub trait GeneralPurpose16bitInstance: Basic16bitInstance {
         fn regs_gp16() -> crate::pac::timer::TimGp16;
-        fn set_center_aligned_mode(&mut self, cms: crate::timer::vals::Cms) {
-            unsafe {
-                Self::regs_gp16().cr1().modify(|w| w.set_cms(cms));
-            }
-        }
-
     }
 
     pub trait GeneralPurpose32bitInstance: GeneralPurpose16bitInstance {
@@ -104,6 +100,18 @@ macro_rules! impl_basic_16bit_timer {
                     regs.egr().write(|r| r.set_ug(true));
                     regs.cr1().modify(|r| r.set_urs(vals::Urs::ANYEVENT));
                 }
+            }
+
+            fn get_frequency(&self) -> Hertz {
+                let timer_f = Self::frequency().0;
+
+                let regs = Self::regs();
+                let (psc, arr) = unsafe { (regs.psc().read().psc(), regs.arr().read().arr()) };
+                let pclk_ticks_per_timer_period = (psc as u32 + 1) * arr as u32;
+
+                let f = timer_f / pclk_ticks_per_timer_period;
+
+                Hertz::hz(f)
             }
 
             fn clear_update_interrupt(&mut self) -> bool {

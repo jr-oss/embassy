@@ -164,8 +164,8 @@ impl<'d, T: ComplementaryCaptureCompare16bitInstance> ComplementaryPwm<'d, T> {
         }
     }
 
-    pub fn set_center_aligned_mode(&mut self, cms: CenterAlignedModeSelection) {
-        self.inner.set_center_aligned_mode(cms.into())
+    pub fn set_center_aligned_mode(&mut self, cms: CenterAlignedMode) {
+        unsafe { self.inner.set_center_aligned_mode(cms.into()) }
     }
 }
 
