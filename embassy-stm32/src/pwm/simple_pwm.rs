@@ -45,40 +45,28 @@ channel_impl!(new_ch3, Ch3, Channel3Pin);
 channel_impl!(new_ch4, Ch4, Channel4Pin);
 
 mod cms_sealed {
-    use crate::pwm::CenterAlignedMode;
-
     pub trait CmsAlignMode {
         const FREQ_FACTOR: u8;
-        const MODE: CenterAlignedMode;
+        const MODE: crate::pwm::CenterAlignedMode;
     }
 }
 pub trait CmsAlignMode: cms_sealed::CmsAlignMode {}
-impl<T: cms_sealed::CmsAlignMode> CmsAlignMode for T {}
 
-pub struct CmsEdgeAlignedMode;
-pub struct CmsCenterAlignedMode1;
-pub struct CmsCenterAlignedMode2;
-pub struct CmsCenterAlignedMode3;
-
-impl cms_sealed::CmsAlignMode for CmsEdgeAlignedMode {
-    const FREQ_FACTOR: u8 = 1;
-    const MODE: CenterAlignedMode = CenterAlignedMode::EdgeAligned;
+macro_rules! align_mode_impl {
+    ($name:ident, $freq_factor:expr, $align_mode:ident) => {
+        pub struct $name { }
+        impl cms_sealed::CmsAlignMode for $name {
+            const FREQ_FACTOR: u8 = $freq_factor;
+            const MODE: CenterAlignedMode = CenterAlignedMode::$align_mode;
+        }
+        impl CmsAlignMode for $name { }
+    }
 }
 
-impl cms_sealed::CmsAlignMode for CmsCenterAlignedMode1 {
-    const FREQ_FACTOR: u8 = 2;
-    const MODE: CenterAlignedMode = CenterAlignedMode::CenterAlignedMode1;
-}
-
-impl cms_sealed::CmsAlignMode for CmsCenterAlignedMode2 {
-    const FREQ_FACTOR: u8 = 2;
-    const MODE: CenterAlignedMode = CenterAlignedMode::CenterAlignedMode2;
-}
-
-impl cms_sealed::CmsAlignMode for CmsCenterAlignedMode3 {
-    const FREQ_FACTOR: u8 = 2;
-    const MODE: CenterAlignedMode = CenterAlignedMode::CenterAlignedMode3;
-}
+align_mode_impl!(CmsEdgeAlignedMode, 1, EdgeAligned);
+align_mode_impl!(CmsCenterAlignedMode1, 2, CenterAlignedMode1);
+align_mode_impl!(CmsCenterAlignedMode2, 2, CenterAlignedMode2);
+align_mode_impl!(CmsCenterAlignedMode3, 2, CenterAlignedMode3);
 
 pub struct SimplePwm<'d, T, CMS = CmsEdgeAlignedMode> {
     inner: PeripheralRef<'d, T>,
@@ -138,14 +126,6 @@ impl<'d, T: CaptureCompare16bitInstance, CMS: CmsAlignMode> SimplePwm<'d, T, CMS
         }
     }
 
-    pub fn tim_enable(&mut self) {
-        self.inner.start();
-    }
-
-    pub fn tim_disable(&mut self) {
-        self.inner.stop();
-    }
-
     pub fn set_freq(&mut self, freq: Hertz) {
         self.inner.set_frequency(freq * CMS::FREQ_FACTOR);
     }
@@ -162,12 +142,6 @@ impl<'d, T: CaptureCompare16bitInstance, CMS: CmsAlignMode> SimplePwm<'d, T, CMS
     pub fn set_output_compare_mode(&mut self, channel: Channel, mode: OutputCompareMode) {
         unsafe {
             self.inner.set_output_compare_mode(channel, mode);
-        }
-    }
-
-    pub fn set_center_aligned_mode(&mut self, cms: CenterAlignedMode) {
-        unsafe {
-            self.inner.set_center_aligned_mode(cms.into());
         }
     }
 }
