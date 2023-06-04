@@ -44,11 +44,48 @@ channel_impl!(new_ch2, Ch2, Channel2Pin);
 channel_impl!(new_ch3, Ch3, Channel3Pin);
 channel_impl!(new_ch4, Ch4, Channel4Pin);
 
-pub struct SimplePwm<'d, T> {
-    inner: PeripheralRef<'d, T>,
+mod cms_sealed {
+    use crate::pwm::CenterAlignedMode;
+
+    pub trait CmsAlignMode {
+        const FREQ_FACTOR: u8;
+        const MODE: CenterAlignedMode;
+    }
+}
+pub trait CmsAlignMode: cms_sealed::CmsAlignMode {}
+impl<T: cms_sealed::CmsAlignMode> CmsAlignMode for T {}
+
+pub struct CmsEdgeAlignedMode;
+pub struct CmsCenterAlignedMode1;
+pub struct CmsCenterAlignedMode2;
+pub struct CmsCenterAlignedMode3;
+
+impl cms_sealed::CmsAlignMode for CmsEdgeAlignedMode {
+    const FREQ_FACTOR: u8 = 1;
+    const MODE: CenterAlignedMode = CenterAlignedMode::EdgeAligned;
 }
 
-impl<'d, T: CaptureCompare16bitInstance> SimplePwm<'d, T> {
+impl cms_sealed::CmsAlignMode for CmsCenterAlignedMode1 {
+    const FREQ_FACTOR: u8 = 2;
+    const MODE: CenterAlignedMode = CenterAlignedMode::CenterAlignedMode1;
+}
+
+impl cms_sealed::CmsAlignMode for CmsCenterAlignedMode2 {
+    const FREQ_FACTOR: u8 = 2;
+    const MODE: CenterAlignedMode = CenterAlignedMode::CenterAlignedMode2;
+}
+
+impl cms_sealed::CmsAlignMode for CmsCenterAlignedMode3 {
+    const FREQ_FACTOR: u8 = 2;
+    const MODE: CenterAlignedMode = CenterAlignedMode::CenterAlignedMode3;
+}
+
+pub struct SimplePwm<'d, T, CMS = CmsEdgeAlignedMode> {
+    inner: PeripheralRef<'d, T>,
+    _cms: PhantomData<CMS>
+}
+
+impl<'d, T: CaptureCompare16bitInstance, CMS: CmsAlignMode> SimplePwm<'d, T, CMS> {
     pub fn new(
         tim: impl Peripheral<P = T> + 'd,
         _ch1: Option<PwmPin<'d, T, Ch1>>,
@@ -66,9 +103,12 @@ impl<'d, T: CaptureCompare16bitInstance> SimplePwm<'d, T> {
         T::enable();
         <T as crate::rcc::sealed::RccPeripheral>::reset();
 
-        let mut this = Self { inner: tim };
+        let mut this = Self { inner: tim, _cms: PhantomData };
 
-        this.inner.set_frequency(freq);
+        // SAFETY: Center mode select cn be changed because timer is disabled
+        unsafe { this.inner.set_center_aligned_mode(CMS::MODE); }
+
+        this.set_freq(freq);
         this.inner.start();
 
         unsafe {
@@ -107,11 +147,7 @@ impl<'d, T: CaptureCompare16bitInstance> SimplePwm<'d, T> {
     }
 
     pub fn set_freq(&mut self, freq: Hertz) {
-        self.inner.set_frequency(freq);
-    }
-
-    pub fn get_freq(&self) -> Hertz {
-        self.inner.get_frequency()
+        self.inner.set_frequency(freq * CMS::FREQ_FACTOR);
     }
 
     pub fn get_max_duty(&self) -> u16 {
@@ -124,77 +160,14 @@ impl<'d, T: CaptureCompare16bitInstance> SimplePwm<'d, T> {
     }
 
     pub fn set_output_compare_mode(&mut self, channel: Channel, mode: OutputCompareMode) {
-        unsafe { self.inner.set_output_compare_mode(channel, mode); }
-    }
-
-    pub fn set_center_aligned_mode(&mut self, cms: CenterAlignedMode) {
-        unsafe { self.inner.set_center_aligned_mode(cms.into()); }
-    }
-
-    pub fn get_center_aligned_mode(&self) -> CenterAlignedMode {
         unsafe {
-            self.inner.get_center_aligned_mode()
+            self.inner.set_output_compare_mode(channel, mode);
         }
-    }
-}
-
-pub struct SimplePwmEx<'d, T> {
-    inner: SimplePwm<'d, T>,
-}
-
-impl<'d, T: CaptureCompare16bitInstance> SimplePwmEx<'d, T> {
-    pub fn new(simple_pwm: SimplePwm<'d, T>) -> Self {
-        Self { inner: simple_pwm }
-    }
-
-    pub fn enable(&mut self, channel: Channel) {
-        self.inner.enable(channel);
-    }
-
-    pub fn disable(&mut self, channel: Channel) {
-        self.inner.disable(channel);
-    }
-
-    pub fn set_freq(&mut self, freq: Hertz) {
-        let scale = self.get_scale();
-        self.inner.set_freq(freq * scale);
-    }
-
-    pub fn get_max_duty(&self) -> u16 {
-        self.inner.get_max_duty() / self.get_scale()
-    }
-
-    pub fn set_duty(&mut self, channel: Channel, duty: u16) {
-        self.inner.set_duty(channel, duty);
-    }
-
-    pub fn set_output_compare_mode(&mut self, channel: Channel, mode: OutputCompareMode) {
-        self.inner.set_output_compare_mode(channel, mode);
     }
 
     pub fn set_center_aligned_mode(&mut self, cms: CenterAlignedMode) {
-        let prev_scale = self.get_scale();
-
-        self.inner.tim_disable(); // Don't change cms with timer enabled
-        self.inner.set_center_aligned_mode(cms);
-
-        let new_scale = self.get_scale();
-
-        if new_scale != prev_scale {
-            let f = self.inner.get_freq() * new_scale / prev_scale;
-            self.inner.set_freq(f);
+        unsafe {
+            self.inner.set_center_aligned_mode(cms.into());
         }
-
-        self.inner.tim_enable();
-    }
-
-    fn get_scale(&self) -> u16 {
-        let scale = match self.inner.get_center_aligned_mode() {
-            CenterAlignedMode::EdgeAligned => 1,
-            CenterAlignedMode::CenterAlignedMode1 => 2,
-            CenterAlignedMode::CenterAlignedMode2 => 2,
-            CenterAlignedMode::CenterAlignedMode3 => 2,
-        };
-        scale
     }
 }

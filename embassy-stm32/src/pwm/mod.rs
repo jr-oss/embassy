@@ -87,11 +87,7 @@ pub(crate) mod sealed {
 
         unsafe fn get_max_compare_value(&self) -> u16;
 
-        unsafe fn is_tim_enabled(&mut self) -> bool;
-
         unsafe fn set_center_aligned_mode(&mut self, cms: CenterAlignedMode);
-
-        unsafe fn get_center_aligned_mode(&self) -> CenterAlignedMode;
     }
 
     pub trait ComplementaryCaptureCompare16bitInstance: CaptureCompare16bitInstance {
@@ -159,34 +155,10 @@ macro_rules! impl_compare_capable_16bit {
                 Self::regs_gp16().arr().read().arr()
             }
 
-            unsafe fn is_tim_enabled(&mut self) -> bool {
-                <Self as crate::timer::sealed::GeneralPurpose16bitInstance>::regs_gp16()
-                    .cr1()
-                    .read()
-                    .cen()
-            }
-
             unsafe fn set_center_aligned_mode(&mut self, cms: CenterAlignedMode) {
                 <Self as crate::timer::sealed::GeneralPurpose16bitInstance>::regs_gp16()
                     .cr1()
                     .modify(|w| w.set_cms(cms.into()));
-            }
-
-            unsafe fn get_center_aligned_mode(&self) -> CenterAlignedMode {
-                let cms = unsafe {
-                    <Self as crate::timer::sealed::GeneralPurpose16bitInstance>::regs_gp16()
-                        .cr1()
-                        .read()
-                        .cms()
-                };
-                let center_aligned_mode = match cms {
-                    stm32_metapac::timer::vals::Cms::EDGEALIGNED => CenterAlignedMode::EdgeAligned,
-                    stm32_metapac::timer::vals::Cms::CENTERALIGNED1 => CenterAlignedMode::CenterAlignedMode1,
-                    stm32_metapac::timer::vals::Cms::CENTERALIGNED2 => CenterAlignedMode::CenterAlignedMode2,
-                    stm32_metapac::timer::vals::Cms::CENTERALIGNED3 => CenterAlignedMode::CenterAlignedMode3,
-                    _ => unreachable!(),
-                };
-                center_aligned_mode
             }
         }
     };
@@ -276,37 +248,11 @@ foreach_interrupt! {
                 Self::regs_advanced().arr().read().arr()
             }
 
-            unsafe fn is_tim_enabled(&mut self) -> bool {
-                use crate::timer::sealed::AdvancedControlInstance;
-                Self::regs_advanced()
-                    .cr1()
-                    .read()
-                    .cen()
-            }
-
             unsafe fn set_center_aligned_mode(&mut self, cms: CenterAlignedMode) {
                 use crate::timer::sealed::AdvancedControlInstance;
                 Self::regs_advanced()
                     .cr1()
                     .modify(|w| w.set_cms(cms.into()));
-            }
-
-            unsafe fn get_center_aligned_mode(&self) -> CenterAlignedMode {
-                use crate::timer::sealed::AdvancedControlInstance;
-                let cms = unsafe {
-                    Self::regs_advanced()
-                    .cr1()
-                    .read()
-                    .cms()
-                };
-                let center_aligned_mode = match cms {
-                    stm32_metapac::timer::vals::Cms::EDGEALIGNED => CenterAlignedMode::EdgeAligned,
-                    stm32_metapac::timer::vals::Cms::CENTERALIGNED1 => CenterAlignedMode::CenterAlignedMode1,
-                    stm32_metapac::timer::vals::Cms::CENTERALIGNED2 => CenterAlignedMode::CenterAlignedMode2,
-                    stm32_metapac::timer::vals::Cms::CENTERALIGNED3 => CenterAlignedMode::CenterAlignedMode3,
-                    _ => unreachable!(),
-                };
-                center_aligned_mode
             }
         }
 

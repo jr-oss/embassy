@@ -58,50 +58,10 @@ impl<'d, T: ComplementaryCaptureCompare16bitInstance> ComplementaryPwm<'d, T> {
         _ch4n: Option<ComplementaryPwmPin<'d, T, Ch4>>,
         freq: Hertz,
     ) -> Self {
-        Self::new_inner(
-            tim,
-            freq,
-            OutputCompareMode::PwmMode1,
-            OutputCompareMode::PwmMode1,
-            OutputCompareMode::PwmMode1,
-            OutputCompareMode::PwmMode1,
-        )
+        Self::new_inner(tim, freq)
     }
 
-    pub fn with_output_compare_mode(
-        tim: impl Peripheral<P = T> + 'd,
-        _ch1: Option<PwmPin<'d, T, Ch1>>,
-        _ch1n: Option<ComplementaryPwmPin<'d, T, Ch1>>,
-        ch1ocm: Option<OutputCompareMode>,
-        _ch2: Option<PwmPin<'d, T, Ch2>>,
-        _ch2n: Option<ComplementaryPwmPin<'d, T, Ch2>>,
-        ch2ocm: Option<OutputCompareMode>,
-        _ch3: Option<PwmPin<'d, T, Ch3>>,
-        _ch3n: Option<ComplementaryPwmPin<'d, T, Ch3>>,
-        ch3ocm: Option<OutputCompareMode>,
-        _ch4: Option<PwmPin<'d, T, Ch4>>,
-        _ch4n: Option<ComplementaryPwmPin<'d, T, Ch4>>,
-        ch4ocm: Option<OutputCompareMode>,
-        freq: Hertz,
-    ) -> Self {
-        Self::new_inner(
-            tim,
-            freq,
-            ch1ocm.unwrap_or(OutputCompareMode::PwmMode1),
-            ch2ocm.unwrap_or(OutputCompareMode::PwmMode1),
-            ch3ocm.unwrap_or(OutputCompareMode::PwmMode1),
-            ch4ocm.unwrap_or(OutputCompareMode::PwmMode1),
-        )
-    }
-
-    fn new_inner(
-        tim: impl Peripheral<P = T> + 'd,
-        freq: Hertz,
-        ch1ocm: OutputCompareMode,
-        ch2ocm: OutputCompareMode,
-        ch3ocm: OutputCompareMode,
-        ch4ocm: OutputCompareMode,
-    ) -> Self {
+    fn new_inner(tim: impl Peripheral<P = T> + 'd, freq: Hertz) -> Self {
         into_ref!(tim);
 
         T::enable();
@@ -116,13 +76,13 @@ impl<'d, T: ComplementaryCaptureCompare16bitInstance> ComplementaryPwm<'d, T> {
             this.inner.enable_outputs(true);
 
             this.inner
-                .set_output_compare_mode(Channel::Ch1, ch1ocm);
+                .set_output_compare_mode(Channel::Ch1, OutputCompareMode::PwmMode1);
             this.inner
-                .set_output_compare_mode(Channel::Ch2, ch2ocm);
+                .set_output_compare_mode(Channel::Ch2, OutputCompareMode::PwmMode1);
             this.inner
-                .set_output_compare_mode(Channel::Ch3, ch3ocm);
+                .set_output_compare_mode(Channel::Ch3, OutputCompareMode::PwmMode1);
             this.inner
-                .set_output_compare_mode(Channel::Ch4, ch4ocm);
+                .set_output_compare_mode(Channel::Ch4, OutputCompareMode::PwmMode1);
         }
         this
     }
@@ -162,10 +122,6 @@ impl<'d, T: ComplementaryCaptureCompare16bitInstance> ComplementaryPwm<'d, T> {
             self.inner.set_dead_time_clock_division(ckd);
             self.inner.set_dead_time_value(value);
         }
-    }
-
-    pub fn set_center_aligned_mode(&mut self, cms: CenterAlignedMode) {
-        unsafe { self.inner.set_center_aligned_mode(cms.into()) }
     }
 }
 
