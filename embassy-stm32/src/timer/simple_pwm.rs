@@ -44,11 +44,36 @@ channel_impl!(new_ch2, Ch2, Channel2Pin);
 channel_impl!(new_ch3, Ch3, Channel3Pin);
 channel_impl!(new_ch4, Ch4, Channel4Pin);
 
-pub struct SimplePwm<'d, T> {
-    inner: PeripheralRef<'d, T>,
+mod cms_sealed {
+    pub trait CmsAlignMode {
+        const FREQ_FACTOR: u8;
+        const MODE: crate::timer::CenterAlignedMode;
+    }
+}
+pub trait CmsAlignMode: cms_sealed::CmsAlignMode {}
+
+macro_rules! align_mode_impl {
+    ($name:ident, $freq_factor:expr, $align_mode:ident) => {
+        pub struct $name {}
+        impl cms_sealed::CmsAlignMode for $name {
+            const FREQ_FACTOR: u8 = $freq_factor;
+            const MODE: CenterAlignedMode = CenterAlignedMode::$align_mode;
+        }
+        impl CmsAlignMode for $name {}
+    };
 }
 
-impl<'d, T: CaptureCompare16bitInstance> SimplePwm<'d, T> {
+align_mode_impl!(CmsEdgeAlignedMode, 1, EdgeAligned);
+align_mode_impl!(CmsCenterAlignedMode1, 2, CenterAlignedMode1);
+align_mode_impl!(CmsCenterAlignedMode2, 2, CenterAlignedMode2);
+align_mode_impl!(CmsCenterAlignedMode3, 2, CenterAlignedMode3);
+
+pub struct SimplePwm<'d, T, CMS = CmsEdgeAlignedMode> {
+    inner: PeripheralRef<'d, T>,
+    _cms: PhantomData<CMS>,
+}
+
+impl<'d, T: CaptureCompare16bitInstance, CMS: CmsAlignMode> SimplePwm<'d, T, CMS> {
     pub fn new(
         tim: impl Peripheral<P = T> + 'd,
         _ch1: Option<PwmPin<'d, T, Ch1>>,
@@ -66,7 +91,12 @@ impl<'d, T: CaptureCompare16bitInstance> SimplePwm<'d, T> {
 
         T::enable_and_reset();
 
-        let mut this = Self { inner: tim };
+        let mut this = Self {
+            inner: tim,
+            _cms: PhantomData,
+        };
+
+        this.inner.set_center_aligned_mode(CMS::MODE);
 
         this.inner.set_counting_mode(counting_mode);
         this.set_freq(freq);
@@ -113,6 +143,10 @@ impl<'d, T: CaptureCompare16bitInstance> SimplePwm<'d, T> {
 
     pub fn set_polarity(&mut self, channel: Channel, polarity: OutputPolarity) {
         self.inner.set_output_polarity(channel, polarity);
+    }
+
+    pub fn set_output_compare_mode(&mut self, channel: Channel, mode: OutputCompareMode) {
+        self.inner.set_output_compare_mode(channel, mode);
     }
 }
 

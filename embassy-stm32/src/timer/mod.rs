@@ -13,6 +13,24 @@ pub mod low_level {
     pub use super::sealed::*;
 }
 
+pub enum CenterAlignedMode {
+    EdgeAligned,
+    CenterAlignedMode1,
+    CenterAlignedMode2,
+    CenterAlignedMode3,
+}
+
+impl From<CenterAlignedMode> for stm32_metapac::timer::vals::Cms {
+    fn from(mode: CenterAlignedMode) -> Self {
+        match mode {
+            CenterAlignedMode::EdgeAligned => stm32_metapac::timer::vals::Cms::EDGEALIGNED,
+            CenterAlignedMode::CenterAlignedMode1 => stm32_metapac::timer::vals::Cms::CENTERALIGNED1,
+            CenterAlignedMode::CenterAlignedMode2 => stm32_metapac::timer::vals::Cms::CENTERALIGNED2,
+            CenterAlignedMode::CenterAlignedMode3 => stm32_metapac::timer::vals::Cms::CENTERALIGNED3,
+        }
+    }
+}
+
 pub(crate) mod sealed {
 
     use super::*;
@@ -227,6 +245,10 @@ pub(crate) mod sealed {
         fn get_compare_value(&self, channel: Channel) -> u16 {
             Self::regs_gp16().ccr(channel.raw()).read().ccr()
         }
+
+        fn set_center_aligned_mode(&mut self, cms: CenterAlignedMode) {
+            Self::regs_gp16().cr1().modify(|w| w.set_cms(cms.into()));
+        }
     }
 
     pub trait ComplementaryCaptureCompare16bitInstance: CaptureCompare16bitInstance + AdvancedControlInstance {
@@ -266,6 +288,10 @@ pub(crate) mod sealed {
 
         fn get_compare_value(&self, channel: Channel) -> u32 {
             Self::regs_gp32().ccr(channel.raw()).read().ccr()
+        }
+
+        fn set_center_aligned_mode(&mut self, cms: CenterAlignedMode) {
+            Self::regs_gp32().cr1().modify(|w| w.set_cms(cms.into()));
         }
     }
 }
